@@ -6,7 +6,7 @@
   <meta name="google-site-verification" content="BrlUHcSClOH0tnkOZEotFXuXtBcCCwSOOs4CCwjfhPE" />
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Not AI 1.5</title>
+  <title>Not AI 2.0</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = { darkMode: 'class' }
@@ -134,7 +134,7 @@
         </div>
         <div class="sidebar-text overflow-hidden">
           <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" id="userNameSidebar">Quân</p>
-          <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Not AI 1.5 Pro</p>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Not AI 2.0 Pro</p>
         </div>
       </div>
       <button onclick="openSettings()" class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-colors sidebar-text" title="Cài đặt">
@@ -152,7 +152,7 @@
           <i class="fa-solid fa-bars text-lg"></i>
         </button>
         <div class="flex items-center space-x-2">
-          <h1 class="font-bold text-slate-800 dark:text-white text-base">Not AI 1.5</h1>
+          <h1 class="font-bold text-slate-800 dark:text-white text-base">Not AI 2.0</h1>
           <span id="modelBadge" class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Gemini 3.5 Flash-Lite</span>
         </div>
       </div>
@@ -763,7 +763,6 @@
         }
         contentBox.appendChild(textEl);
 
-        // Nếu là tin nhắn bot hoàn chỉnh thì gắn thanh công cụ (Bộ đếm từ + Preview)
         if (!isUser && message.text) {
           const wordCount = message.text.trim().split(/\s+/).filter(Boolean).length;
           const charCount = message.text.length;
@@ -779,7 +778,6 @@
           contentBox.appendChild(footerBar);
         }
 
-        // Thêm nút Sao Chép cho các đoạn code
         contentBox.querySelectorAll('pre').forEach((pre) => {
           if (!pre.querySelector('.copy-code-btn')) {
             pre.style.position = 'relative';
@@ -867,7 +865,6 @@
       if (el) el.remove();
     }
 
-    /* --- Gửi tin nhắn có tích hợp Streaming chữ chạy --- */
     async function handleSubmit(event) {
       event.preventDefault();
 
@@ -906,7 +903,6 @@
 
       renderMessageUI(userMsg);
 
-      // Tạo khung tin nhắn trống cho bot để chạy chữ streaming
       const botMsg = { role: 'assistant', text: '' };
       session.messages.push(botMsg);
       renderMessageUI(botMsg, true);
