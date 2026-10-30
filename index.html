@@ -1,0 +1,1201 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <link rel="icon" type="image/png" href="Not-ai-icon.png">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <meta name="google-site-verification" content="BrlUHcSClOH0tnkOZEotFXuXtBcCCwSOOs4CCwjfhPE" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Not AI 1.5</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = { darkMode: 'class' }
+  </script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap');
+    body { font-family: 'Plus Jakarta Sans', sans-serif; }
+    
+    .custom-scrollbar::-webkit-scrollbar { width: 4px; height: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+    .custom-scrollbar::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 4px; }
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #cbd5e1; }
+    
+    .typing-dot { animation: bounce 1.4s infinite ease-in-out both; }
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+    @keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1.0); } }
+    
+    .drag-active {
+      border-color: #6366f1 !important;
+      background-color: #f1f5f9 !important;
+    }
+
+    .mic-recording {
+      animation: pulse-red 1.5s infinite;
+      color: #ef4444 !important;
+    }
+    @keyframes pulse-red {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.15); }
+      100% { transform: scale(1); }
+    }
+
+    /* Phông nền cho chế độ Thư giãn (Cờ caro) */
+    .relax-bg {
+      background: linear-gradient(135deg, #0d1b2a 0%, #1b1b3a 40%, #2b1035 70%, #3a0ca3 100%);
+    }
+
+    /* Bàn cờ caro 15x15 */
+    .caro-grid {
+      display: grid;
+      grid-template-columns: repeat(15, minmax(0, 1fr));
+      grid-template-rows: repeat(15, minmax(0, 1fr));
+      gap: 1px;
+      background-color: rgba(255, 255, 255, 0.2);
+      border: 2px solid rgba(255, 255, 255, 0.3);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .caro-cell {
+      aspect-ratio: 1 / 1;
+      background-color: rgba(15, 23, 42, 0.75);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.15s ease;
+    }
+
+    .caro-cell:hover {
+      background-color: rgba(99, 102, 241, 0.4);
+    }
+  </style>
+
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/katex.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.8/dist/contrib/auto-render.min.js"></script>
+</head>
+<body class="bg-[#f8fafd] dark:bg-slate-900 text-slate-800 dark:text-slate-100 h-screen flex overflow-hidden transition-colors">
+
+  <!-- Sidebar -->
+  <aside id="sidebar" class="w-64 bg-[#f0f4f9] dark:bg-slate-800 border-r border-slate-200/80 dark:border-slate-700 flex flex-col justify-between transition-all duration-300 z-20 flex-shrink-0">
+    <div class="p-3 flex flex-col h-full overflow-hidden">
+      <div class="flex items-center justify-between mb-4 px-2 pt-1">
+        <button onclick="toggleSidebar()" class="p-2 rounded-full hover:bg-slate-200/70 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition-colors" title="Thu gọn/Mở rộng">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <button onclick="startNewChat()" class="flex items-center space-x-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3 py-2 rounded-xl transition-all shadow-sm">
+          <i class="fa-solid fa-plus text-xs"></i>
+          <span class="sidebar-text">Cuộc trò chuyện mới</span>
+        </button>
+      </div>
+
+      <div class="space-y-1 mb-4 text-slate-700 dark:text-slate-200 text-xs font-medium">
+        <div class="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+          <i class="fa-solid fa-box-archive text-sm w-5"></i>
+          <span class="sidebar-text">Thư viện</span>
+        </div>
+        <div class="flex items-center space-x-3 px-3 py-2.5 rounded-xl hover:bg-slate-200/60 dark:hover:bg-slate-700 cursor-pointer transition-colors">
+          <i class="fa-solid fa-clock-rotate-left text-sm w-5"></i>
+          <span class="sidebar-text">Lịch sử nâng cao</span>
+        </div>
+        <div onclick="openRelaxMode()" class="flex items-center space-x-3 px-3 py-2.5 rounded-xl bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 text-purple-800 dark:text-purple-200 font-semibold cursor-pointer transition-colors">
+          <i class="fa-solid fa-gamepad text-sm w-5 text-purple-600 dark:text-purple-400"></i>
+          <span class="sidebar-text">Thư giãn</span>
+        </div>
+      </div>
+
+      <div class="flex-1 overflow-y-auto custom-scrollbar pt-2 border-t border-slate-200/60 dark:border-slate-700 space-y-1">
+        <div class="px-3 py-1 flex items-center justify-between text-[11px] font-bold text-slate-400 uppercase tracking-wider sidebar-text">
+          <span>Lịch sử gần đây</span>
+          <div class="flex space-x-1">
+            <button onclick="exportHistoryJSON()" title="Xuất Lịch Sử JSON" class="hover:text-indigo-600 transition-colors">
+              <i class="fa-solid fa-download"></i>
+            </button>
+            <button onclick="document.getElementById('importJsonInput').click()" title="Nhập Lịch Sử JSON" class="hover:text-indigo-600 transition-colors">
+              <i class="fa-solid fa-upload"></i>
+            </button>
+            <input type="file" id="importJsonInput" accept=".json" class="hidden" onchange="importHistoryJSON(event)">
+          </div>
+        </div>
+
+        <div id="sessionList" class="space-y-0.5"></div>
+      </div>
+    </div>
+
+    <div class="p-3 border-t border-slate-200/70 dark:border-slate-700 bg-[#e9eef6]/50 dark:bg-slate-800/80 flex items-center justify-between">
+      <div class="flex items-center space-x-3 overflow-hidden">
+        <div class="w-8 h-8 rounded-full bg-slate-800 dark:bg-slate-700 text-white flex items-center justify-center font-bold text-xs flex-shrink-0" id="userAvatarSidebar">
+          U
+        </div>
+        <div class="sidebar-text overflow-hidden">
+          <p class="text-xs font-bold text-slate-800 dark:text-slate-100 truncate" id="userNameSidebar">Quân</p>
+          <p class="text-[10px] text-slate-500 dark:text-slate-400 truncate">Not AI 1.5 Pro</p>
+        </div>
+      </div>
+      <button onclick="openSettings()" class="p-2 rounded-lg text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200/60 dark:hover:bg-slate-700 transition-colors sidebar-text" title="Cài đặt">
+        <i class="fa-solid fa-gear text-sm"></i>
+      </button>
+    </div>
+  </aside>
+
+  <!-- Trang Chat / Main Content -->
+  <div id="chatInterface" class="flex-1 flex flex-col h-full min-w-0 bg-[#f8fafd] dark:bg-slate-900 relative">
+    
+    <header class="px-6 py-3.5 flex items-center justify-between z-10 border-b border-slate-200/50 dark:border-slate-800">
+      <div class="flex items-center space-x-3">
+        <button onclick="toggleSidebar()" class="md:hidden p-2 text-slate-600 dark:text-slate-300 hover:bg-slate-200/60 rounded-xl">
+          <i class="fa-solid fa-bars text-lg"></i>
+        </button>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-slate-800 dark:text-white text-base">Not AI 1.5</h1>
+          <span id="modelBadge" class="bg-indigo-100 dark:bg-indigo-900/60 text-indigo-700 dark:text-indigo-300 text-[10px] font-semibold px-2.5 py-0.5 rounded-full">Gemini 3.5 Flash-Lite</span>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-3">
+        <select id="modelSelect" onchange="handleModelChange()" class="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 text-xs font-medium rounded-xl px-3 py-1.5 outline-none focus:border-indigo-500 shadow-sm transition-all cursor-pointer">
+          <option value="gemini-3.5-flash-lite" selected>Gemini 3.5 Flash-Lite (Cloud)</option>
+          <option value="gemma3:4b">gemma3:4b (Ollama Local)</option>
+          <option value="qwen">qwen (Ollama Local)</option>
+        </select>
+        
+        <button onclick="openSettings()" class="p-2 rounded-xl text-blue-600 hover:bg-blue-50 dark:hover:bg-slate-800 border border-blue-200 dark:border-slate-700 transition-colors" title="Cài đặt (⚙️)">
+          <i class="fa-solid fa-gear text-base"></i>
+        </button>
+
+        <button onclick="clearChat()" class="p-2 rounded-xl text-slate-500 dark:text-slate-400 hover:bg-slate-200/60 dark:hover:bg-slate-800 transition-colors" title="Xóa đoạn chat hiện tại">
+          <i class="fa-solid fa-trash-can text-sm"></i>
+        </button>
+      </div>
+    </header>
+
+    <main id="chatContainer" class="flex-1 overflow-y-auto px-4 py-6 custom-scrollbar max-w-4xl mx-auto w-full flex flex-col">
+      <div id="welcomeScreen" class="my-auto text-center space-y-4 py-12">
+        <h2 class="text-3xl sm:text-4xl font-semibold text-slate-800 dark:text-white tracking-tight">Chúng ta nên bắt đầu từ đâu nhỉ?</h2>
+        <p class="text-slate-500 dark:text-slate-400 text-sm max-w-md mx-auto">Nhập câu hỏi, đính kèm file/hình ảnh hoặc kéo thả vào đây để giao tiếp cùng Not AI.</p>
+      </div>
+
+      <div id="messagesList" class="space-y-6 w-full hidden"></div>
+    </main>
+
+    <footer class="p-4 bg-transparent max-w-4xl mx-auto w-full z-10">
+      <form id="chatForm" onsubmit="handleSubmit(event)" class="bg-white dark:bg-slate-800 rounded-3xl p-3 shadow-md border border-slate-200/80 dark:border-slate-700 focus-within:border-indigo-400 focus-within:ring-2 focus-within:ring-indigo-100 transition-all relative">
+        
+        <div id="imagePreviewContainer" class="hidden flex-wrap gap-2 px-3 pt-1 pb-2 border-b border-slate-100 dark:border-slate-700 mb-2"></div>
+
+        <div class="flex items-center space-x-2">
+          <!-- Nút đính kèm nhận diện cả Ảnh, Code và Văn bản -->
+          <button type="button" onclick="document.getElementById('imageFileInput').click()" class="p-2.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0" title="Đính kèm tệp/hình ảnh">
+            <i class="fa-solid fa-plus text-base"></i>
+          </button>
+          <input type="file" id="imageFileInput" accept="image/*, .txt, .py, .html, .js, .json, .css, .md, .csv, .c, .cpp, .java, .docx" class="hidden" multiple onchange="handleFileSelect(event)">
+
+          <textarea 
+            id="userInput" 
+            rows="1" 
+            placeholder="Hỏi Not AI hoặc kéo thả file/ảnh vào đây..." 
+            class="flex-1 bg-transparent border-0 focus:ring-0 resize-none max-h-32 py-2 px-1 text-slate-800 dark:text-slate-100 placeholder-slate-400 text-sm custom-scrollbar"
+            onkeydown="handleKeyDown(event)"
+            oninput="handleInputChange(this)"
+          ></textarea>
+
+          <button 
+            type="button" 
+            id="micButton" 
+            onclick="toggleSpeechRecognition()" 
+            class="p-2.5 rounded-full text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors flex-shrink-0" 
+            title="Nhập bằng giọng nói"
+          >
+            <i class="fa-solid fa-microphone text-base"></i>
+          </button>
+
+          <button 
+            type="submit" 
+            id="sendButton"
+            class="bg-indigo-600 hover:bg-indigo-700 text-white rounded-full w-9 h-9 flex items-center justify-center transition-all shadow-md shadow-indigo-100 dark:shadow-none flex-shrink-0 disabled:opacity-40"
+          >
+            <i class="fa-solid fa-arrow-up text-sm"></i>
+          </button>
+        </div>
+      </form>
+      <div class="text-center mt-2 text-[11px] text-slate-400 dark:text-slate-500">
+        Not AI có thể đưa ra thông tin chưa chính xác. Tự động lưu lịch sử local.
+      </div>
+    </footer>
+  </div>
+
+  <!-- Giao diện Cờ Caro AI 15x15 -->
+  <div id="relaxInterface" class="hidden fixed inset-0 z-50 relax-bg text-white flex flex-col h-full w-full overflow-hidden">
+    <div class="p-4 bg-slate-900/60 backdrop-blur-md border-b border-purple-500/20 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <i class="fa-solid fa-gamepad text-2xl text-purple-400"></i>
+        <div>
+          <h2 class="font-bold text-lg text-white flex items-center space-x-2">
+            <span>Cờ Caro AI 15x15</span>
+            <span id="caroScoreBoard" class="text-xs bg-purple-900/80 border border-purple-400/30 px-2.5 py-0.5 rounded-full text-purple-200 font-normal">Tỷ số: Bạn 0 - 0 AI</span>
+          </h2>
+          <p class="text-xs text-purple-200" id="caroStatusText">Lượt của bạn (X)</p>
+        </div>
+      </div>
+      <div class="flex items-center space-x-3">
+        <div class="flex items-center space-x-2 bg-slate-800/80 px-3 py-1.5 rounded-xl border border-purple-500/30">
+          <label class="text-xs font-semibold text-purple-300">Độ khó:</label>
+          <select id="caroDifficulty" onchange="resetCaroGame()" class="bg-slate-900 text-purple-200 text-xs font-semibold rounded-lg px-2 py-1 outline-none border border-purple-500/40 cursor-pointer">
+            <option value="easy">Dễ</option>
+            <option value="medium" selected>Trung bình</option>
+            <option value="hard">Khó</option>
+          </select>
+        </div>
+        <button onclick="resetCaroGame()" class="px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold rounded-xl transition-all shadow-md flex items-center space-x-1">
+          <i class="fa-solid fa-rotate-right"></i>
+          <span>Chơi lại</span>
+        </button>
+        <button onclick="closeRelaxMode()" class="px-4 py-1.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl shadow-lg transition-all flex items-center space-x-1.5">
+          <i class="fa-solid fa-arrow-right-from-bracket"></i>
+          <span>Thoát</span>
+        </button>
+      </div>
+    </div>
+    <div class="flex-1 flex items-center justify-center p-4 overflow-auto">
+      <div class="w-full max-w-[620px] aspect-square flex flex-col justify-center">
+        <div id="caroBoard" class="caro-grid w-full h-full shadow-2xl"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Modal Cài đặt -->
+  <div id="settingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4">
+    <div class="bg-white dark:bg-slate-800 rounded-3xl max-w-lg w-full p-6 shadow-2xl border-4 border-blue-600 space-y-5 relative max-h-[90vh] overflow-y-auto custom-scrollbar">
+      
+      <div class="flex justify-between items-center border-b pb-3 border-slate-100 dark:border-slate-700">
+        <h3 class="font-bold text-slate-900 dark:text-white text-lg flex items-center space-x-2">
+          <i class="fa-solid fa-gear text-blue-600"></i>
+          <span>Cài Đặt Hệ Thống</span>
+        </h3>
+        <button onclick="closeSettings()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+          <i class="fa-solid fa-xmark text-lg"></i>
+        </button>
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block flex items-center space-x-1.5">
+          <i class="fa-solid fa-user text-blue-600"></i>
+          <span>Tên hiển thị</span>
+        </label>
+        <input type="text" id="nameInputModal" placeholder="Nhập tên của bạn..." class="w-full px-3.5 py-2 rounded-xl border-2 border-slate-200 dark:border-slate-700 dark:bg-slate-900 focus:border-blue-600 outline-none text-sm font-semibold text-slate-800 dark:text-white">
+      </div>
+
+      <div class="space-y-1.5">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block flex items-center space-x-1.5">
+          <i class="fa-solid fa-moon text-blue-600"></i>
+          <span>Giao diện Theme</span>
+        </label>
+        <div class="flex space-x-3">
+          <button type="button" onclick="setTheme('light')" id="lightThemeBtn" class="flex-1 py-2 rounded-xl border font-semibold text-xs transition-all flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-sun text-amber-500"></i> <span>Sáng</span>
+          </button>
+          <button type="button" onclick="setTheme('dark')" id="darkThemeBtn" class="flex-1 py-2 rounded-xl border font-semibold text-xs transition-all flex items-center justify-center space-x-2">
+            <i class="fa-solid fa-moon text-indigo-400"></i> <span>Tối (Dark)</span>
+          </button>
+        </div>
+      </div>
+
+      <div class="space-y-2 pt-1">
+        <label class="text-xs font-bold text-slate-700 dark:text-slate-300 uppercase tracking-wider block flex items-center space-x-1.5">
+          <i class="fa-solid fa-key text-blue-600"></i>
+          <span>Nhập Gemini API Key</span>
+        </label>
+        <div class="border-4 border-blue-600 p-3 rounded-2xl bg-white dark:bg-slate-900 space-y-2.5">
+          <div class="border-2 border-blue-500 p-2 rounded-xl bg-white dark:bg-slate-800 shadow-inner">
+            <input 
+              type="text" 
+              id="apiKeyInput" 
+              placeholder="nhập mã ở đây..." 
+              class="w-full text-slate-900 dark:text-white font-bold text-sm outline-none bg-transparent placeholder-slate-400"
+            >
+          </div>
+          <div class="text-xs text-slate-700 dark:text-slate-300 space-y-1.5 font-medium pt-0.5">
+            <p class="flex items-center space-x-1">
+              <i class="fa-solid fa-circle-info text-blue-600"></i>
+              <span>Lấy mã API Key miễn phí tại:</span>
+            </p>
+            <a href="https://aistudio.google.com/api-keys" target="_blank" class="inline-block font-mono text-[11px] bg-blue-50 dark:bg-slate-800 hover:bg-blue-100 text-blue-700 dark:text-blue-400 p-2 rounded-xl border border-blue-200 dark:border-slate-700 underline select-all break-all font-bold transition-colors">
+              https://aistudio.google.com/api-keys <i class="fa-solid fa-arrow-up-right-from-square text-[10px] ml-1"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+
+      <div class="flex justify-end space-x-2 pt-2 border-t border-slate-100 dark:border-slate-700">
+        <button onclick="closeSettings()" class="px-4 py-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 text-xs font-semibold">Đóng</button>
+        <button onclick="saveAllSettings()" class="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition-all shadow-md">Lưu Cài Đặt</button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    let sessions = JSON.parse(localStorage.getItem('not_ai_sessions')) || [];
+    let currentSessionId = localStorage.getItem('not_ai_current_session') || null;
+    let attachedImages = [];
+    let userName = localStorage.getItem('not_ai_username') || 'Quân';
+    let recognition = null;
+    let isRecording = false;
+    let currentTheme = localStorage.getItem('not_ai_theme') || 'light';
+
+    let storedCustomKey = localStorage.getItem('not_ai_gemini_key') || '';
+    
+    function getActiveGeminiKey() {
+      return storedCustomKey ? storedCustomKey.trim() : '';
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      setTheme(currentTheme, false);
+
+      const oldDefaultKey = "...";
+      if (localStorage.getItem('not_ai_gemini_key') === oldDefaultKey || localStorage.getItem('not_ai_gemini_key') === "...") {
+        localStorage.removeItem('not_ai_gemini_key');
+        storedCustomKey = '';
+      }
+
+      updateUserUI();
+      setupSpeechRecognition();
+      setupDragAndDrop();
+      initCaroBoard();
+
+      if (sessions.length === 0) {
+        startNewChat(false);
+      } else {
+        if (!currentSessionId) currentSessionId = sessions[0].id;
+        renderSessionList();
+        loadSession(currentSessionId);
+      }
+
+      if (!localStorage.getItem('not_ai_gemini_key')) {
+        openSettings();
+      }
+    });
+
+    function setTheme(theme, save = true) {
+      currentTheme = theme;
+      if (save) localStorage.setItem('not_ai_theme', theme);
+      
+      const html = document.documentElement;
+      const lightBtn = document.getElementById('lightThemeBtn');
+      const darkBtn = document.getElementById('darkThemeBtn');
+
+      if (theme === 'dark') {
+        html.classList.add('dark');
+        if (lightBtn && darkBtn) {
+          lightBtn.className = "flex-1 py-2 rounded-xl border border-slate-700 bg-slate-800 text-slate-300 font-semibold text-xs transition-all flex items-center justify-center space-x-2";
+          darkBtn.className = "flex-1 py-2 rounded-xl border border-indigo-500 bg-indigo-600 text-white font-semibold text-xs transition-all flex items-center justify-center space-x-2";
+        }
+      } else {
+        html.classList.remove('dark');
+        if (lightBtn && darkBtn) {
+          lightBtn.className = "flex-1 py-2 rounded-xl border border-blue-500 bg-blue-600 text-white font-semibold text-xs transition-all flex items-center justify-center space-x-2";
+          darkBtn.className = "flex-1 py-2 rounded-xl border border-slate-200 bg-slate-100 text-slate-700 font-semibold text-xs transition-all flex items-center justify-center space-x-2";
+        }
+      }
+    }
+
+    function toggleSidebar() {
+      const sidebar = document.getElementById('sidebar');
+      sidebar.classList.toggle('w-64');
+      sidebar.classList.toggle('w-16');
+      document.querySelectorAll('.sidebar-text').forEach(el => el.classList.toggle('hidden'));
+    }
+
+    function updateUserUI() {
+      document.getElementById('userNameSidebar').textContent = userName;
+      document.getElementById('userAvatarSidebar').textContent = userName.charAt(0).toUpperCase();
+    }
+
+    function openSettings() {
+      document.getElementById('nameInputModal').value = userName;
+      const keyInput = document.getElementById('apiKeyInput');
+      if (keyInput) keyInput.value = storedCustomKey;
+      document.getElementById('settingsModal').classList.remove('hidden');
+      document.getElementById('settingsModal').classList.add('flex');
+    }
+
+    function closeSettings() {
+      document.getElementById('settingsModal').classList.remove('flex');
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    function saveAllSettings() {
+      const nameVal = document.getElementById('nameInputModal').value.trim();
+      if (nameVal) {
+        userName = nameVal;
+        localStorage.setItem('not_ai_username', userName);
+        updateUserUI();
+      }
+
+      const keyVal = document.getElementById('apiKeyInput').value.trim();
+      if (keyVal) {
+        storedCustomKey = keyVal;
+        localStorage.setItem('not_ai_gemini_key', keyVal);
+      }
+
+      alert("Đã lưu cài đặt thành công!");
+      closeSettings();
+    }
+
+    function setupSpeechRecognition() {
+      if ('webkitSpeechRecognition' in window || 'SpeechRecognition' in window) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = true;
+        recognition.lang = 'vi-VN';
+
+        recognition.onresult = (event) => {
+          let transcript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            transcript += event.results[i][0].transcript;
+          }
+          const inputEl = document.getElementById('userInput');
+          inputEl.value = transcript;
+          handleInputChange(inputEl);
+        };
+
+        recognition.onend = () => {
+          isRecording = false;
+          document.getElementById('micButton').classList.remove('mic-recording');
+        };
+
+        recognition.onerror = () => {
+          isRecording = false;
+          document.getElementById('micButton').classList.remove('mic-recording');
+        };
+      } else {
+        document.getElementById('micButton').style.display = 'none';
+      }
+    }
+
+    function toggleSpeechRecognition() {
+      if (!recognition) return;
+      if (isRecording) {
+        recognition.stop();
+        isRecording = false;
+        document.getElementById('micButton').classList.remove('mic-recording');
+      } else {
+        recognition.start();
+        isRecording = true;
+        document.getElementById('micButton').classList.add('mic-recording');
+      }
+    }
+
+    function handleInputChange(textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = (textarea.scrollHeight) + 'px';
+      const micBtn = document.getElementById('micButton');
+      if (textarea.value.trim().length === 0) {
+        micBtn.classList.remove('hidden');
+      } else {
+        micBtn.classList.add('hidden');
+      }
+    }
+
+    function handleKeyDown(event) {
+      if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        document.getElementById('chatForm').requestSubmit();
+      }
+    }
+
+    function startNewChat(shouldRender = true) {
+      const newSession = {
+        id: 'session_' + Date.now(),
+        title: 'Cuộc trò chuyện mới',
+        messages: [],
+        updatedAt: new Date().toISOString()
+      };
+      sessions.unshift(newSession);
+      currentSessionId = newSession.id;
+      saveSessionsToStorage();
+      if (shouldRender) {
+        renderSessionList();
+        loadSession(currentSessionId);
+      }
+    }
+
+    function saveSessionsToStorage() {
+      localStorage.setItem('not_ai_sessions', JSON.stringify(sessions));
+      localStorage.setItem('not_ai_current_session', currentSessionId);
+    }
+
+    function getCurrentSession() {
+      return sessions.find(s => s.id === currentSessionId);
+    }
+
+    function loadSession(id) {
+      currentSessionId = id;
+      localStorage.setItem('not_ai_current_session', currentSessionId);
+      renderSessionList();
+
+      const session = getCurrentSession();
+      const messagesList = document.getElementById('messagesList');
+      const welcomeScreen = document.getElementById('welcomeScreen');
+
+      messagesList.innerHTML = '';
+
+      if (!session || session.messages.length === 0) {
+        welcomeScreen.classList.remove('hidden');
+        messagesList.classList.add('hidden');
+      } else {
+        welcomeScreen.classList.add('hidden');
+        messagesList.classList.remove('hidden');
+        session.messages.forEach(msg => renderMessageUI(msg));
+      }
+    }
+
+    function renderSessionList() {
+      const container = document.getElementById('sessionList');
+      container.innerHTML = '';
+
+      sessions.forEach(s => {
+        const active = s.id === currentSessionId;
+        const item = document.createElement('div');
+        item.className = `flex items-center justify-between px-3 py-2 rounded-xl text-xs cursor-pointer transition-colors group ${
+          active ? 'bg-indigo-100/70 dark:bg-indigo-900/60 font-semibold text-indigo-900 dark:text-indigo-200' : 'hover:bg-slate-200/50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300'
+        }`;
+        
+        item.innerHTML = `
+          <div class="flex items-center space-x-2 truncate pr-1" onclick="loadSession('${s.id}')">
+            <i class="fa-regular fa-message text-xs opacity-70"></i>
+            <span class="truncate">${s.title}</span>
+          </div>
+          <button onclick="deleteSession(event, '${s.id}')" class="opacity-0 group-hover:opacity-100 hover:text-red-600 transition-opacity p-1">
+            <i class="fa-solid fa-xmark text-xs"></i>
+          </button>
+        `;
+        container.appendChild(item);
+      });
+    }
+
+    function deleteSession(event, id) {
+      event.stopPropagation();
+      sessions = sessions.filter(s => s.id !== id);
+      if (sessions.length === 0) {
+        startNewChat(true);
+      } else {
+        if (currentSessionId === id) currentSessionId = sessions[0].id;
+        saveSessionsToStorage();
+        renderSessionList();
+        loadSession(currentSessionId);
+      }
+    }
+
+    function exportHistoryJSON() {
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(sessions, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `Not_AI_History_${Date.now()}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
+    function importHistoryJSON(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          const importedSessions = JSON.parse(e.target.result);
+          if (Array.isArray(importedSessions)) {
+            sessions = importedSessions;
+            currentSessionId = sessions[0]?.id || null;
+            saveSessionsToStorage();
+            renderSessionList();
+            if (currentSessionId) loadSession(currentSessionId);
+            alert("Đã khôi phục lịch sử chat thành công!");
+          } else {
+            alert("Định dạng file JSON không hợp lệ!");
+          }
+        } catch (err) {
+          alert("Lỗi đọc file JSON: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      event.target.value = '';
+    }
+
+    /* --- Bộ Xử Lý File: Đọc cả Ảnh, Mã Code và Văn Bản --- */
+    function handleFileSelect(e) {
+      processFiles(Array.from(e.target.files));
+      e.target.value = '';
+    }
+
+    function processFiles(files) {
+      files.forEach(file => {
+        if (file.type.startsWith('image/')) {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            attachedImages.push({
+              base64: e.target.result.split(',')[1],
+              previewUrl: e.target.result,
+              mimeType: file.type
+            });
+            renderImagePreviews();
+          };
+          reader.readAsDataURL(file);
+        } else {
+          const reader = new FileReader();
+          reader.onload = (e) => {
+            const fileContent = e.target.result;
+            const inputEl = document.getElementById('userInput');
+            inputEl.value += `\n[Nội dung file ${file.name}]:\n\`\`\`\n${fileContent}\n\`\`\`\n`;
+            handleInputChange(inputEl);
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    function renderImagePreviews() {
+      const container = document.getElementById('imagePreviewContainer');
+      container.innerHTML = '';
+      if (attachedImages.length === 0) {
+        container.classList.add('hidden');
+        return;
+      }
+      container.classList.remove('hidden');
+      attachedImages.forEach((img, idx) => {
+        const wrap = document.createElement('div');
+        wrap.className = 'relative w-12 h-12 rounded-lg overflow-hidden border border-slate-200 dark:border-slate-700';
+        wrap.innerHTML = `
+          <img src="${img.previewUrl}" class="w-full h-full object-cover">
+          <button type="button" onclick="removeImage(${idx})" class="absolute top-0 right-0 bg-black/60 text-white w-3.5 h-3.5 flex items-center justify-center text-[9px]">
+            <i class="fa-solid fa-xmark"></i>
+          </button>
+        `;
+        container.appendChild(wrap);
+      });
+    }
+
+    function removeImage(idx) {
+      attachedImages.splice(idx, 1);
+      renderImagePreviews();
+    }
+
+    function setupDragAndDrop() {
+      const form = document.getElementById('chatForm');
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(name => {
+        form.addEventListener(name, (e) => { e.preventDefault(); e.stopPropagation(); }, false);
+      });
+      form.addEventListener('drop', (e) => {
+        const files = Array.from(e.dataTransfer.files);
+        processFiles(files);
+      }, false);
+    }
+
+    function clearChat() {
+      const session = getCurrentSession();
+      if (session) {
+        session.messages = [];
+        saveSessionsToStorage();
+        loadSession(currentSessionId);
+      }
+    }
+
+    function handleModelChange() {
+      const selected = document.getElementById('modelSelect').value;
+      document.getElementById('modelBadge').textContent = selected.includes('gemini') ? "Gemini 3.5 Flash-Lite" : selected.toUpperCase();
+    }
+
+    function renderMessageUI(message, isTyping = false) {
+      const container = document.getElementById('messagesList');
+      const isUser = message.role === 'user';
+
+      const wrapper = document.createElement('div');
+      wrapper.className = `flex items-start space-x-3 ${isUser ? 'flex-row-reverse space-x-reverse' : ''}`;
+      if (isTyping) wrapper.id = 'typingIndicator';
+
+      const avatar = document.createElement('div');
+      avatar.className = `w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold ${
+        isUser ? 'bg-slate-800 dark:bg-slate-700' : 'bg-indigo-600'
+      }`;
+      avatar.textContent = isUser ? userName.charAt(0).toUpperCase() : 'N';
+
+      const contentBox = document.createElement('div');
+      contentBox.className = `max-w-[82%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed ai-content-box ${
+        isUser ? 'bg-indigo-600 text-white' : 'bg-white dark:bg-slate-800 border border-slate-200/80 dark:border-slate-700 text-slate-800 dark:text-slate-100 shadow-sm'
+      }`;
+
+      if (isTyping && !message.text) {
+        contentBox.innerHTML = `
+          <div class="flex items-center space-x-1.5 py-1">
+            <span class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></span>
+            <span class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></span>
+            <span class="w-2 h-2 bg-slate-400 rounded-full typing-dot"></span>
+          </div>
+        `;
+      } else {
+        if (message.images && message.images.length > 0) {
+          const imgWrap = document.createElement('div');
+          imgWrap.className = 'flex flex-wrap gap-2 mb-2';
+          message.images.forEach(url => {
+            const img = document.createElement('img');
+            img.src = url.startsWith('data:') ? url : `data:image/jpeg;base64,${url}`;
+            img.className = 'w-28 h-28 object-cover rounded-xl border border-white/20';
+            imgWrap.appendChild(img);
+          });
+          contentBox.appendChild(imgWrap);
+        }
+
+        const textEl = document.createElement('div');
+        textEl.className = 'whitespace-pre-wrap break-words markdown-content';
+        let formattedText = message.text || '';
+        
+        if (window.marked && !isTyping) {
+          textEl.innerHTML = marked.parse(formattedText);
+        } else {
+          textEl.textContent = formattedText;
+        }
+        contentBox.appendChild(textEl);
+
+        // Nếu là tin nhắn bot hoàn chỉnh thì gắn thanh công cụ (Bộ đếm từ + Preview)
+        if (!isUser && message.text) {
+          const wordCount = message.text.trim().split(/\s+/).filter(Boolean).length;
+          const charCount = message.text.length;
+
+          const footerBar = document.createElement('div');
+          footerBar.className = 'mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-400';
+          footerBar.innerHTML = `
+            <span>📊 ${wordCount} từ • ${charCount} ký tự</span>
+            <button onclick="toggleMarkdownPreview(this)" class="hover:text-indigo-600 font-semibold transition-colors flex items-center space-x-1">
+              <i class="fa-solid fa-eye"></i> <span>Xem trước HTML/Render</span>
+            </button>
+          `;
+          contentBox.appendChild(footerBar);
+        }
+
+        // Thêm nút Sao Chép cho các đoạn code
+        contentBox.querySelectorAll('pre').forEach((pre) => {
+          if (!pre.querySelector('.copy-code-btn')) {
+            pre.style.position = 'relative';
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-code-btn absolute top-2 right-2 bg-slate-700 hover:bg-slate-600 text-white text-[10px] px-2 py-1 rounded-md transition-all shadow';
+            copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Sao chép';
+            copyBtn.onclick = () => {
+              const codeText = pre.querySelector('code') ? pre.querySelector('code').innerText : pre.innerText;
+              navigator.clipboard.writeText(codeText);
+              copyBtn.innerHTML = '<i class="fa-solid fa-check"></i> Đã chép!';
+              setTimeout(() => { copyBtn.innerHTML = '<i class="fa-regular fa-copy"></i> Sao chép'; }, 2000);
+            };
+            pre.appendChild(copyBtn);
+          }
+        });
+      }
+
+      wrapper.appendChild(avatar);
+      wrapper.appendChild(contentBox);
+      container.appendChild(wrapper);
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function updateLastMessageUI(message) {
+      const container = document.getElementById('messagesList');
+      const lastWrapper = container.lastElementChild;
+      if (lastWrapper) {
+        const textEl = lastWrapper.querySelector('.markdown-content');
+        if (textEl && window.marked) {
+          textEl.innerHTML = marked.parse(message.text);
+        } else if (textEl) {
+          textEl.textContent = message.text;
+        }
+      }
+    }
+
+    function refreshLastMessageUI(message) {
+      const container = document.getElementById('messagesList');
+      const lastWrapper = container.lastElementChild;
+      if (lastWrapper) {
+        const contentBox = lastWrapper.querySelector('.ai-content-box');
+        if (contentBox) {
+          const wordCount = message.text ? message.text.trim().split(/\s+/).filter(Boolean).length : 0;
+          const charCount = message.text ? message.text.length : 0;
+
+          const textEl = contentBox.querySelector('.markdown-content');
+          if (textEl && window.marked) {
+            textEl.innerHTML = marked.parse(message.text);
+          }
+
+          let footerBar = contentBox.querySelector('.msg-footer-bar');
+          if (!footerBar) {
+            footerBar = document.createElement('div');
+            footerBar.className = 'msg-footer-bar mt-3 pt-2 border-t border-slate-200/60 dark:border-slate-700 flex items-center justify-between text-[11px] text-slate-400';
+            contentBox.appendChild(footerBar);
+          }
+
+          footerBar.innerHTML = `
+            <span>📊 ${wordCount} từ • ${charCount} ký tự</span>
+            <button onclick="toggleMarkdownPreview(this)" class="hover:text-indigo-600 font-semibold transition-colors flex items-center space-x-1">
+              <i class="fa-solid fa-eye"></i> <span>Xem trước HTML/Render</span>
+            </button>
+          `;
+        }
+      }
+    }
+
+    function toggleMarkdownPreview(btn) {
+      const contentBox = btn.closest('.ai-content-box');
+      const textEl = contentBox.querySelector('.markdown-content');
+      
+      if (!textEl.getAttribute('data-raw')) {
+        textEl.setAttribute('data-raw', textEl.innerHTML);
+        textEl.innerHTML = `<div class="p-3 bg-slate-900 text-green-400 font-mono text-xs rounded-xl overflow-x-auto border border-slate-700">${textEl.innerText}</div>`;
+        btn.innerHTML = '<i class="fa-solid fa-code"></i> <span>Xem Markdown</span>';
+      } else {
+        textEl.innerHTML = textEl.getAttribute('data-raw');
+        textEl.removeAttribute('data-raw');
+        btn.innerHTML = '<i class="fa-solid fa-eye"></i> <span>Xem trước HTML/Render</span>';
+      }
+    }
+
+    function removeTypingIndicator() {
+      const el = document.getElementById('typingIndicator');
+      if (el) el.remove();
+    }
+
+    /* --- Gửi tin nhắn có tích hợp Streaming chữ chạy --- */
+    async function handleSubmit(event) {
+      event.preventDefault();
+
+      const inputEl = document.getElementById('userInput');
+      const text = inputEl.value.trim();
+      const selectedModel = document.getElementById('modelSelect').value;
+
+      if (!text && attachedImages.length === 0) return;
+
+      const session = getCurrentSession();
+      if (!session) return;
+
+      if (session.messages.length === 0 && text) {
+        session.title = text.slice(0, 25) + (text.length > 25 ? '...' : '');
+        renderSessionList();
+      }
+
+      inputEl.value = '';
+      handleInputChange(inputEl);
+
+      const currentImagesRaw = [...attachedImages];
+      attachedImages = [];
+      renderImagePreviews();
+
+      const userMsg = {
+        role: 'user',
+        text: text,
+        images: currentImagesRaw.map(i => i.previewUrl)
+      };
+
+      session.messages.push(userMsg);
+      saveSessionsToStorage();
+
+      document.getElementById('welcomeScreen').classList.add('hidden');
+      document.getElementById('messagesList').classList.remove('hidden');
+
+      renderMessageUI(userMsg);
+
+      // Tạo khung tin nhắn trống cho bot để chạy chữ streaming
+      const botMsg = { role: 'assistant', text: '' };
+      session.messages.push(botMsg);
+      renderMessageUI(botMsg, true);
+
+      let systemPrompt = "Bạn là Not AI, một trợ lý AI thông minh và hữu ích. Tên của bạn là Not AI. Không sử dụng ký tự LaTeX như $...$ hoặc \\sqrt{} khi trả lời toán học, hãy ghi ký tự văn bản thông thường (ví dụ: √36 = 6). Hãy trả lời bằng tiếng Việt khi người dùng hỏi bằng tiếng Việt.";
+      if (userName) systemPrompt += ` Người dùng tên là ${userName}.`;
+
+      try {
+        if (selectedModel.includes('gemini')) {
+          let contentsPayload = session.messages.slice(0, -1).map(msg => {
+            let parts = [];
+            if (msg.text) parts.push({ text: msg.text });
+            return {
+              role: msg.role === 'assistant' ? 'model' : 'user',
+              parts: parts.length > 0 ? parts : [{ text: "" }]
+            };
+          });
+
+          const activeKey = getActiveGeminiKey();
+          const targetUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.5-flash-lite:streamGenerateContent?alt=sse&key=${activeKey}`;
+
+          const res = await fetch(targetUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ contents: contentsPayload, systemInstruction: { parts: [{ text: systemPrompt }] } })
+          });
+
+          if (!res.ok) throw new Error(`Lỗi Gemini API: ${res.status}`);
+
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let accumulatedText = "";
+
+          while (true) {
+            const { value, done } = await reader.read();
+            if (done) break;
+            
+            const chunk = decoder.decode(value, { stream: true });
+            const lines = chunk.split('\n');
+            for (const line of lines) {
+              if (line.startsWith('data: ')) {
+                try {
+                  const json = JSON.parse(line.substring(6));
+                  const piece = json.candidates?.[0]?.content?.parts?.[0]?.text;
+                  if (piece) {
+                    accumulatedText += piece;
+                    botMsg.text = accumulatedText;
+                    updateLastMessageUI(botMsg);
+                  }
+                } catch (e) {}
+              }
+            }
+          }
+        } else {
+          let messagesPayload = session.messages.slice(0, -1).map(msg => ({
+            role: msg.role === 'assistant' ? 'assistant' : 'user',
+            content: msg.text || ''
+          }));
+          messagesPayload.unshift({ role: 'system', content: systemPrompt });
+
+          const res = await fetch('http://localhost:11434/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ model: selectedModel, messages: messagesPayload, stream: false })
+          });
+
+          if (!res.ok) throw new Error(`Lỗi Ollama API: ${res.status}`);
+          const data = await res.json();
+          botMsg.text = data.message?.content || "Không nhận phản hồi.";
+          updateLastMessageUI(botMsg);
+        }
+
+        saveSessionsToStorage();
+        refreshLastMessageUI(botMsg);
+
+      } catch (err) {
+        botMsg.text = "Lỗi kết nối: " + err.message;
+        updateLastMessageUI(botMsg);
+      }
+    }
+
+    /* --- Game Cờ Caro 15x15 --- */
+    let caroBoardState = Array(15).fill(null).map(() => Array(15).fill(null));
+    let caroGameActive = true;
+    let caroPlayerTurn = true;
+    let playerScore = 0;
+    let aiScore = 0;
+
+    function updateCaroScoreDisplay() {
+      const el = document.getElementById('caroScoreBoard');
+      if (el) el.textContent = `Tỷ số: Bạn ${playerScore} - ${aiScore} AI`;
+    }
+
+    function openRelaxMode() {
+      document.getElementById('relaxInterface').classList.remove('hidden');
+      resetCaroGame();
+    }
+
+    function closeRelaxMode() {
+      document.getElementById('relaxInterface').classList.add('hidden');
+    }
+
+    function initCaroBoard() {
+      const boardContainer = document.getElementById('caroBoard');
+      boardContainer.innerHTML = '';
+      for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'caro-cell text-sm sm:text-base';
+          cell.dataset.row = r;
+          cell.dataset.col = c;
+          cell.onclick = () => handleCaroClick(r, c);
+          boardContainer.appendChild(cell);
+        }
+      }
+    }
+
+    function resetCaroGame() {
+      caroBoardState = Array(15).fill(null).map(() => Array(15).fill(null));
+      caroGameActive = true;
+      caroPlayerTurn = true;
+      document.getElementById('caroStatusText').textContent = 'Lượt của bạn (X)';
+      document.getElementById('caroStatusText').className = 'text-xs text-purple-200';
+
+      const cells = document.querySelectorAll('.caro-cell');
+      cells.forEach(cell => {
+        cell.textContent = '';
+        cell.className = 'caro-cell text-sm sm:text-base';
+      });
+    }
+
+    function handleCaroClick(r, c) {
+      if (!caroGameActive || !caroPlayerTurn || caroBoardState[r][c] !== null) return;
+
+      makeCaroMove(r, c, 'X');
+
+      if (checkCaroWin(r, c, 'X')) {
+        playerScore++;
+        updateCaroScoreDisplay();
+        endCaroGame('Bạn đã thắng AI! Tự động chơi lại sau 2 giây...', 'text-green-400 font-bold');
+        return;
+      }
+
+      if (isCaroBoardFull()) {
+        endCaroGame('Hòa cờ! Tự động reset bài chơi...', 'text-yellow-400 font-bold');
+        return;
+      }
+
+      caroPlayerTurn = false;
+      document.getElementById('caroStatusText').textContent = 'AI đang suy nghĩ...';
+
+      setTimeout(() => {
+        makeAIMove();
+      }, 350);
+    }
+
+    function makeCaroMove(r, c, symbol) {
+      caroBoardState[r][c] = symbol;
+      const cell = document.querySelector(`.caro-cell[data-row="${r}"][data-col="${c}"]`);
+      if (cell) {
+        cell.textContent = symbol;
+        if (symbol === 'X') {
+          cell.classList.add('text-cyan-400');
+        } else {
+          cell.classList.add('text-rose-400');
+        }
+      }
+    }
+
+    function endCaroGame(msg, statusClass) {
+      caroGameActive = false;
+      const statusEl = document.getElementById('caroStatusText');
+      statusEl.textContent = msg;
+      statusEl.className = 'text-xs ' + statusClass;
+
+      setTimeout(() => {
+        resetCaroGame();
+      }, 2500);
+    }
+
+    function isCaroBoardFull() {
+      return caroBoardState.every(row => row.every(cell => cell !== null));
+    }
+
+    function makeAIMove() {
+      if (!caroGameActive) return;
+
+      const difficulty = document.getElementById('caroDifficulty').value;
+      let move = null;
+
+      if (difficulty === 'easy') {
+        move = getRandomCaroMove();
+      } else if (difficulty === 'medium') {
+        move = findBestCaroMove(false) || getRandomCaroMove();
+      } else {
+        move = findBestCaroMove(true) || getRandomCaroMove();
+      }
+
+      if (move) {
+        makeCaroMove(move.r, move.c, 'O');
+
+        if (checkCaroWin(move.r, move.c, 'O')) {
+          aiScore++;
+          updateCaroScoreDisplay();
+          endCaroGame('AI đã thắng! Tự động làm mới trận cờ...', 'text-rose-400 font-bold');
+          return;
+        }
+
+        if (isCaroBoardFull()) {
+          endCaroGame('Hòa cờ! Tự động reset bài chơi...', 'text-yellow-400 font-bold');
+          return;
+        }
+
+        caroPlayerTurn = true;
+        document.getElementById('caroStatusText').textContent = 'Lượt của bạn (X)';
+      }
+    }
+
+    function getRandomCaroMove() {
+      let emptyCells = [];
+      for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+          if (caroBoardState[r][c] === null) emptyCells.push({ r, c });
+        }
+      }
+      if (emptyCells.length === 0) return null;
+      return emptyCells[Math.floor(Math.random() * emptyCells.length)];
+    }
+
+    function findBestCaroMove(isHard) {
+      let bestScore = -1;
+      let bestMove = null;
+
+      for (let r = 0; r < 15; r++) {
+        for (let c = 0; c < 15; c++) {
+          if (caroBoardState[r][c] === null) {
+            let attackScore = evaluatePosition(r, c, 'O');
+            let defenseScore = evaluatePosition(r, c, 'X');
+            let totalScore = attackScore + (isHard ? defenseScore * 1.2 : defenseScore);
+
+            if (totalScore > bestScore) {
+              bestScore = totalScore;
+              bestMove = { r, c };
+            }
+          }
+        }
+      }
+      return bestMove;
+    }
+
+    function evaluatePosition(r, c, symbol) {
+      const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      let score = 0;
+
+      for (let [dr, dc] of directions) {
+        let count = 1;
+        for (let i = 1; i <= 4; i++) {
+          let nr = r + dr * i, nc = c + dc * i;
+          if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && caroBoardState[nr][nc] === symbol) count++;
+          else break;
+        }
+        for (let i = 1; i <= 4; i++) {
+          let nr = r - dr * i, nc = c - dc * i;
+          if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && caroBoardState[nr][nc] === symbol) count++;
+          else break;
+        }
+        score += Math.pow(10, count);
+      }
+      return score;
+    }
+
+    function checkCaroWin(r, c, symbol) {
+      const directions = [[0, 1], [1, 0], [1, 1], [1, -1]];
+      for (let [dr, dc] of directions) {
+        let count = 1;
+        for (let i = 1; i <= 4; i++) {
+          let nr = r + dr * i, nc = c + dc * i;
+          if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && caroBoardState[nr][nc] === symbol) count++;
+          else break;
+        }
+        for (let i = 1; i <= 4; i++) {
+          let nr = r - dr * i, nc = c - dc * i;
+          if (nr >= 0 && nr < 15 && nc >= 0 && nc < 15 && caroBoardState[nr][nc] === symbol) count++;
+          else break;
+        }
+        if (count >= 5) return true;
+      }
+      return false;
+    }
+  </script>
+</body>
+</html>
